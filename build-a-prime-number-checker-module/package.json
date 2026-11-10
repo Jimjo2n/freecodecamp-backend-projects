@@ -1,0 +1,10 @@
+{
+  "name": "prime-checker",
+  "version": "1.0.0",
+  "description": "Check whether a safe integer is prime.",
+  "keywords": ["prime", "math"],
+  "license": "MIT",
+  "author": "Jimjo2n",
+  "type": "commonjs",
+  "main": "index.js"
+}

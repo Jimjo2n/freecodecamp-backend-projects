@@ -1,0 +1,23 @@
+import express from 'express';
+import helmet from 'helmet';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import {authenticate} from './middleware/authenticate.js';
+import {authorizeModification} from './middleware/authorize.js';
+import {findByUsername,getWatchlist,addMovie,updateMovie,deleteMovie} from './utils/db.js';
+const app=express();
+app.use(helmet());app.use(express.json());
+app.get('/',(req,res)=>res.send('Family Movie Watchlist API'));
+app.post('/api/auth/login',async(req,res)=>{
+ const {username,password}=req.body;
+ if(typeof username!=='string'||typeof password!=='string'||!username||!password) return res.status(400).json({error:'Username and password required'});
+ const user=findByUsername(username);
+ if(!user||!await bcrypt.compare(password,user.passwordHash)) return res.status(401).json({error:'Invalid credentials'});
+ res.json({token:jwt.sign({id:user.id,username:user.username,role:user.role},process.env.JWT_SECRET,{expiresIn:'1h'})});
+});
+app.use('/api/watchlist',authenticate);
+app.get('/api/watchlist/:userId',(req,res)=>{const list=getWatchlist(Number(req.params.userId));return list===null?res.status(404).json({error:'User not found'}):res.json(list);});
+app.post('/api/watchlist/:userId/movies',authorizeModification,(req,res)=>{const movie=addMovie(Number(req.params.userId),req.body);return movie?res.status(201).json(movie):res.status(404).json({error:'User not found'});});
+app.put('/api/watchlist/:userId/movies/:movieId',authorizeModification,(req,res)=>{const movie=updateMovie(Number(req.params.userId),Number(req.params.movieId),req.body);return movie?res.json(movie):res.status(404).json({error:'Movie not found'});});
+app.delete('/api/watchlist/:userId/movies/:movieId',authorizeModification,(req,res)=>{const removed=deleteMovie(Number(req.params.userId),Number(req.params.movieId));return removed?res.json({success:true}):res.status(404).json({error:'Movie not found'});});
+app.listen(process.env.PORT||3000);
